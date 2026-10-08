@@ -1,0 +1,652 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --accent: #4261EE;
+    --accent-soft: rgba(66, 97, 238, .14);
+    --warn: #B45309;
+    --warn-bg: rgba(245, 158, 11, .14);
+    --ok: #16A34A;
+    --ok-bg: rgba(22, 163, 74, .12);
+    --danger: #E5484D;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font: 12px/1.45 Inter, system-ui, sans-serif;
+    color: var(--figma-color-text); background: var(--figma-color-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  body.loading { visibility: hidden; } /* avoids a language flash before saved prefs arrive */
+  button, input { font: inherit; color: inherit; }
+
+  header { flex: none; padding: 16px 16px 12px; border-bottom: 1px solid var(--figma-color-border); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { flex: none; width: 34px; height: 34px; border-radius: 4px; }
+  .eyebrow {
+    font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 2px;
+  }
+  .eyebrow small { font-size: 10px; letter-spacing: 0; text-transform: none; opacity: .7; font-weight: 500; }
+  h1 { margin: 0; font-size: 15px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+
+  .icon-btn {
+    flex: none; width: 24px; height: 24px; display: grid; place-items: center; padding: 0;
+    border: 0; border-radius: 7px; cursor: pointer; background: transparent;
+    color: var(--figma-color-text-secondary); transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: var(--figma-color-bg-hover); color: var(--figma-color-text); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  main { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; }
+
+  .field { margin-top: 14px; }
+  .lbl {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    font-size: 11px; font-weight: 600; color: var(--figma-color-text-secondary); margin-bottom: 6px;
+  }
+  .lbl .val { font-weight: 600; color: var(--figma-color-text); font-variant-numeric: tabular-nums; }
+  .hint { font-size: 11px; color: var(--figma-color-text-tertiary); margin-top: 6px; }
+
+  .seg {
+    display: flex; padding: 3px; gap: 3px; border-radius: 10px;
+    background: var(--figma-color-bg-secondary); border: 1px solid var(--figma-color-border);
+  }
+  .seg button {
+    flex: 1; min-width: 0; font-weight: 500; padding: 6px 4px; border: 0; border-radius: 7px; cursor: pointer;
+    background: transparent; color: var(--figma-color-text); transition: all .15s; line-height: 1.25;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .seg button:not(.on):not(:disabled):hover { background: var(--figma-color-bg-hover); }
+  .seg button.on { color: #fff; font-weight: 600; background: var(--accent); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  .seg button small { display: block; font-size: 9px; font-weight: 500; opacity: .75; }
+  .seg button .warn-ico { color: var(--warn); }
+  .seg button.on .warn-ico { color: #fff; }
+
+  .banner {
+    display: none; margin-top: 8px; padding: 9px 11px; border-radius: 10px;
+    background: var(--warn-bg); color: var(--warn); font-size: 11px;
+  }
+  .banner.show { display: block; }
+  .banner b { display: block; margin-bottom: 1px; font-size: 12px; }
+  .banner.ok { background: var(--ok-bg); color: var(--figma-color-text); }
+  .banner.ok b { color: var(--ok); }
+  .banner.err { background: rgba(229, 72, 77, .1); color: var(--danger); }
+
+  .btn {
+    padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: 600;
+    border: 1px solid var(--figma-color-border); background: var(--figma-color-bg); transition: background .15s, filter .15s;
+  }
+  .btn:hover { background: var(--figma-color-bg-hover); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.primary:disabled { filter: none; }
+  .btn.small { padding: 4px 9px; font-size: 11px; }
+  .btn.block { display: block; width: 100%; margin-top: 16px; }
+
+  /* Results */
+  .results { margin-top: 18px; display: none; }
+  body.has-results .results { display: block; }
+  .res-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .counts { color: var(--figma-color-text-secondary); }
+  .counts b { color: var(--figma-color-text); font-variant-numeric: tabular-nums; }
+  .entry {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 4px;
+    border-radius: 9px; border: 1px solid var(--figma-color-border); background: var(--figma-color-bg);
+  }
+  .entry:hover { background: var(--figma-color-bg-hover); }
+  .entry input { flex: none; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .thumb {
+    flex: none; width: 40px; height: 40px; border-radius: 6px; overflow: hidden; display: grid; place-items: center;
+    border: 1px solid var(--figma-color-border); cursor: pointer;
+    /* checkerboard, so transparent PNGs read as transparent */
+    background: repeating-conic-gradient(var(--figma-color-bg-secondary) 0 25%, var(--figma-color-bg) 0 50%) 0 0 / 10px 10px;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.loading::after {
+    content: ''; width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--figma-color-border); border-top-color: var(--accent); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .entry .meta { flex: 1; min-width: 0; cursor: pointer; }
+  .entry .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry .meta:hover .name { color: var(--accent); }
+  .entry .sub { font-size: 11px; color: var(--figma-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry .side { flex: none; text-align: right; }
+  .entry .size { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .entry .gain { font-size: 11px; font-weight: 600; color: var(--ok); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .entry .gain.est { opacity: .7; }
+  .entry .gain.none { color: var(--figma-color-text-tertiary); font-weight: 500; }
+  .entry.no-gain { opacity: .6; }
+  .counts .gain { color: var(--ok); }
+  .empty { padding: 32px 12px; text-align: center; color: var(--figma-color-text-secondary); }
+
+  footer {
+    flex: none; display: none; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 16px; border-top: 1px solid var(--figma-color-border);
+  }
+  body.has-items footer { display: flex; }
+  .info { min-width: 0; color: var(--figma-color-text-secondary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .status { margin-top: 10px; min-height: 16px; font-size: 11px; color: var(--figma-color-text-secondary); text-align: center; }
+
+  /* Settings */
+  .settings {
+    position: fixed; inset: 0; z-index: 5; display: none; flex-direction: column; background: var(--figma-color-bg);
+  }
+  body.settings-open .settings { display: flex; }
+  .s-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--figma-color-border); }
+  .s-head h2 { margin: 0; font-size: 14px; letter-spacing: -.01em; }
+  .s-body { padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+  .s-ver { color: var(--figma-color-text-tertiary); font-size: 11px; }
+</style>
+</head>
+<body class="loading">
+  <header>
+    <div class="top">
+      <div class="brand">
+        <img class="logo" alt="">
+        <div>
+          <div class="eyebrow">Pyde Design <small id="ver"></small></div>
+          <h1 data-i18n="appTitle"></h1>
+        </div>
+      </div>
+      <button class="icon-btn" id="openSettings" data-i18n-title="settings">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4.5h6M11.5 4.5H14M2 11.5h2.5M8 11.5h6"/><circle cx="9.75" cy="4.5" r="1.75"/><circle cx="6.25" cy="11.5" r="1.75"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="field">
+      <div class="lbl" data-i18n="scope"></div>
+      <div class="seg" id="scope">
+        <button data-v="selection" data-i18n="scopeSelection"></button>
+        <button data-v="page" data-i18n="scopePage"></button>
+        <button data-v="document" data-i18n="scopeDocument"></button>
+      </div>
+      <div class="hint" id="scopeHint"></div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" data-i18n="resolution"></div>
+      <div class="seg" id="scale">
+        <button data-v="2">2x <span class="warn-ico">⚠</span><small data-i18n="notRecommended"></small></button>
+        <button data-v="3">3x<small data-i18n="recommended"></small></button>
+        <button data-v="4">4x<small>&nbsp;</small></button>
+      </div>
+      <div class="banner" id="scaleWarn">
+        <b data-i18n="scale2Title"></b>
+        <span data-i18n="scale2Text"></span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" data-i18n="minSize"></div>
+      <div class="seg" id="minSize">
+        <button data-v="102400">100 KB+</button>
+        <button data-v="512000">500 KB+</button>
+        <button data-v="1048576">1 MB+</button>
+      </div>
+      <div class="hint" data-i18n="minSizeHint"></div>
+    </div>
+
+
+    <button class="btn primary block" id="scan" data-i18n="scan"></button>
+    <div class="banner" id="resultBanner"><b id="resultTitle"></b><span id="resultText"></span></div>
+    <div class="status" id="status"></div>
+
+    <div class="results">
+      <div class="res-head">
+        <div class="counts" id="counts"></div>
+        <button class="btn small" id="toggle"></button>
+      </div>
+      <div id="list"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="info" id="selInfo"></div>
+    <button class="btn primary" id="apply"></button>
+  </footer>
+
+  <div class="settings">
+    <div class="s-head">
+      <button class="icon-btn" id="closeSettings" data-i18n-title="back">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>
+      </button>
+      <h2 data-i18n="settings"></h2>
+    </div>
+    <div class="s-body">
+      <div>
+        <div class="lbl" data-i18n="language"></div>
+        <div class="seg">
+          <button data-lang="en">English</button>
+          <button data-lang="tr">Türkçe</button>
+        </div>
+        <div class="hint" data-i18n="langHint"></div>
+      </div>
+
+      <div class="s-ver" id="sVer"></div>
+    </div>
+  </div>
+
+<script>
+const VERSION = '1.2.0';
+
+const STRINGS = {
+  en: {
+    settings: 'Settings', back: 'Back', language: 'Language', version: 'Version',
+    langHint: 'Only changes the plugin interface, just for you.',
+    appTitle: 'Image Optimizer',
+    scope: 'Scope', scopeSelection: 'Selection', scopePage: 'This page', scopeDocument: 'Whole file',
+    scopeHintSel: (n) => 'Scanning “' + n + '”.',
+    scopeHintSelN: (n) => 'Scanning the ' + n + ' selected layers.',
+    scopeHintNone: 'Select a frame or section to scan only that.',
+    scopeHintPage: 'Scanning every layer on the current page.',
+    scopeHintDoc: 'Loads and scans every page. Can take a while in large files.',
+    resolution: 'Target resolution', recommended: 'Recommended', notRecommended: 'Not recommended',
+    scale2Title: '2x isn’t recommended',
+    scale2Text: 'Images can look blurry on 3x phone screens (most modern iPhones and Android flagships). Use it only if you are sure the design ships at 2x.',
+    minSize: 'File size', minSizeHint: 'Only images at least this heavy are listed. Only the pixel size changes; PNGs stay PNG, JPEGs stay JPEG.',
+    scan: 'Scan', scanning: 'Scanning…',
+    scanProgress: (n, tot) => n + ' / ' + tot + ' layers scanned…',
+    applyProgress: (n, tot) => n + ' / ' + tot + ' images optimized…',
+    counts: (n) => '<b>' + n + '</b> ' + (n === 1 ? 'result' : 'results'),
+    countsGain: (g) => ' · estimated saving <b class="gain">' + g + '</b>',
+    selectAll: 'Select all', selectNone: 'Clear',
+    uses: (n) => n + (n === 1 ? ' use' : ' uses'),
+    useOf: (i, n) => 'use ' + i + ' of ' + n,
+    goTo: 'Go to layer', goToNext: 'Click again for the next use',
+    noGain: 'No saving',
+    empty: 'Nothing to optimize 🎉',
+    emptyHint: 'Try a lower file size threshold or a wider scope.',
+    selInfo: (n, g) => n + ' selected · ~' + g + ' saving',
+    apply: (n) => 'Optimize ' + n + (n === 1 ? ' image' : ' images'),
+    applying: 'Optimizing…',
+    doneTitle: (n, saved) => n + (n === 1 ? ' image' : ' images') + ' optimized, ' + saved + ' saved',
+    doneSkipped: (n) => n + ' skipped (resizing didn’t make them smaller). ',
+    doneFailed: (n) => n + ' layers couldn’t be edited (probably library components). ',
+    doneUndo: 'Undo with ⌘Z / Ctrl+Z. Scan again to check.',
+    errTitle: 'Something went wrong',
+  },
+  tr: {
+    settings: 'Ayarlar', back: 'Geri', language: 'Dil', version: 'Sürüm',
+    langHint: 'Sadece senin için plugin arayüzünün dilini değiştirir.',
+    appTitle: 'Image Optimizer',
+    scope: 'Kapsam', scopeSelection: 'Seçim', scopePage: 'Bu sayfa', scopeDocument: 'Tüm dosya',
+    scopeHintSel: (n) => '“' + n + '” taranacak.',
+    scopeHintSelN: (n) => 'Seçili ' + n + ' katman taranacak.',
+    scopeHintNone: 'Sadece onu taramak için bir frame veya section seç.',
+    scopeHintPage: 'Bu sayfadaki tüm katmanlar taranacak.',
+    scopeHintDoc: 'Tüm sayfaları yükleyip tarar. Büyük dosyalarda biraz sürebilir.',
+    resolution: 'Hedef çözünürlük', recommended: 'Önerilen', notRecommended: 'Önerilmez',
+    scale2Title: '2x önerilmez',
+    scale2Text: 'Görseller 3x telefon ekranlarında (çoğu güncel iPhone ve üst segment Android) bulanık görünebilir. Sadece tasarımın 2x’te kullanılacağından eminsen seç.',
+    minSize: 'Dosya boyutu', minSizeHint: 'Sadece en az bu boyuttaki görseller listelenir. Yalnızca piksel boyutu değişir; PNG’ler PNG, JPEG’ler JPEG kalır.',
+    scan: 'Tara', scanning: 'Taranıyor…',
+    scanProgress: (n, tot) => n + ' / ' + tot + ' katman tarandı…',
+    applyProgress: (n, tot) => n + ' / ' + tot + ' görsel optimize edildi…',
+    counts: (n) => '<b>' + n + '</b> sonuç',
+    countsGain: (g) => ' · tahmini kazanç <b class="gain">' + g + '</b>',
+    selectAll: 'Tümünü seç', selectNone: 'Temizle',
+    uses: (n) => n + ' kullanım',
+    useOf: (i, n) => n + ' kullanımdan ' + i + '.',
+    goTo: 'Katmana git', goToNext: 'Sonraki kullanım için tekrar tıkla',
+    noGain: 'Kazanç yok',
+    empty: 'Optimize edilecek görsel yok 🎉',
+    emptyHint: 'Daha düşük bir dosya boyutu eşiği ya da daha geniş bir kapsam dene.',
+    selInfo: (n, g) => n + ' seçili · ~' + g + ' kazanç',
+    apply: (n) => n + ' görseli optimize et',
+    applying: 'Optimize ediliyor…',
+    doneTitle: (n, saved) => n + ' görsel optimize edildi, ' + saved + ' kazanıldı',
+    doneSkipped: (n) => n + ' görsel atlandı (küçültmek boyutu düşürmedi). ',
+    doneFailed: (n) => n + ' katman düzenlenemedi (kütüphane bileşeni olabilir). ',
+    doneUndo: '⌘Z / Ctrl+Z ile geri alabilirsin. Kontrol için yeniden tara.',
+    errTitle: 'Bir hata oluştu',
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+const t = () => STRINGS[lang];
+const send = (m) => parent.postMessage({ pluginMessage: m }, '*');
+
+let lang = 'en';
+let prefs = { scale: 3, minSize: 102400 };
+let scope = 'page';
+let selection = { count: 0, container: false, name: null };
+let items = null;          // null = not scanned yet. Each: scan data + { newBytes, thumb, cursor }
+let checked = new Set();
+let busy = null;           // 'scan' | 'apply' | null
+let result = null;         // last apply-result / error, shown in a banner
+const rows = new Map();    // hash -> row element
+const resized = new Map(); // 'hash@WxH' -> resized bytes, measured during preview and reused on apply
+
+const size = (b) => b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+// Measured saving once the preview has run, otherwise a guess from the pixel count.
+function gainOf(it) {
+  if (it.newBytes != null) return Math.max(0, it.bytes - it.newBytes);
+  return Math.round(it.bytes * (1 - (it.targetW * it.targetH) / (it.imgW * it.imgH)));
+}
+
+function savePrefs() { send({ type: 'setPrefs', prefs }); }
+
+// ---------- Controls ----------
+
+function setSeg(id, value) {
+  document.querySelectorAll('#' + id + ' button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(value)));
+}
+
+function renderControls() {
+  setSeg('scope', scope);
+  document.querySelector('#scope [data-v=selection]').disabled = !selection.count;
+  $('scopeHint').textContent = scope === 'selection'
+    ? (selection.name ? t().scopeHintSel(selection.name) : t().scopeHintSelN(selection.count))
+    : !selection.count && scope === 'page' ? t().scopeHintNone
+    : scope === 'page' ? t().scopeHintPage : t().scopeHintDoc;
+
+  setSeg('scale', prefs.scale);
+  $('scaleWarn').classList.toggle('show', prefs.scale === 2);
+  setSeg('minSize', prefs.minSize);
+
+  $('scan').textContent = busy === 'scan' ? t().scanning : t().scan;
+  $('scan').disabled = !!busy || (scope === 'selection' && !selection.count);
+}
+
+function onSelection(m) {
+  selection = m;
+  if (!m.focused) { // ignore the selection we made ourselves when jumping to a layer
+    if (m.container && scope !== 'selection') scope = 'selection';
+    else if (!m.count && scope === 'selection') scope = 'page';
+  }
+  renderControls();
+}
+
+// ---------- Results ----------
+
+function renderResults() {
+  const cl = document.body.classList;
+  cl.toggle('has-results', items !== null);
+  cl.toggle('has-items', !!(items && items.length));
+
+  const banner = $('resultBanner');
+  banner.className = 'banner' + (result ? ' show ' + (result.error ? 'err' : 'ok') : '');
+  if (result && result.error) {
+    $('resultTitle').textContent = t().errTitle;
+    $('resultText').textContent = result.error;
+  } else if (result) {
+    $('resultTitle').textContent = t().doneTitle(result.done, size(result.savedBytes));
+    $('resultText').textContent = (result.skipped ? t().doneSkipped(result.skipped) : '') +
+      (result.failedNodes ? t().doneFailed(result.failedNodes) : '') + t().doneUndo;
+  }
+
+  rows.clear();
+  if (items === null) return;
+  const list = $('list');
+  list.innerHTML = '';
+  $('toggle').style.display = items.length ? '' : 'none';
+
+  if (!items.length) {
+    renderCounts();
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.innerHTML = '<div></div><div class="hint"></div>';
+    d.firstChild.textContent = t().empty;
+    d.lastChild.textContent = t().emptyHint;
+    list.append(d);
+    return;
+  }
+
+  items.forEach((it) => {
+    const row = document.createElement('div');
+    row.className = 'entry';
+    row.innerHTML = '<input type="checkbox"><div class="thumb"></div>' +
+      '<div class="meta"><div class="name"></div><div class="sub dims"></div><div class="sub uses"></div></div>' +
+      '<div class="side"><div class="size"></div><div class="gain"></div></div>';
+    const box = row.querySelector('input');
+    box.onchange = () => { box.checked ? checked.add(it.hash) : checked.delete(it.hash); renderCounts(); };
+    row.querySelector('.meta').onclick = row.querySelector('.thumb').onclick = () => goTo(it);
+    row.querySelector('.dims').textContent = it.imgW + '×' + it.imgH + ' → ' + it.targetW + '×' + it.targetH +
+      (it.format ? ' · ' + it.format : '');
+    row.querySelector('.size').textContent = size(it.bytes);
+    rows.set(it.hash, row);
+    list.append(row);
+    renderRow(it);
+  });
+  renderCounts();
+}
+
+function renderRow(it) {
+  const row = rows.get(it.hash);
+  if (!row) return;
+  const n = it.nodes.length;
+  // After a click, the row shows the use that was just selected; before that, the first one.
+  const shown = it.cursor ? it.nodes[(it.cursor - 1) % n] : it.nodes[0];
+  row.querySelector('.name').textContent = shown.name;
+  row.querySelector('.uses').textContent =
+    (it.cursor && n > 1 ? t().useOf(((it.cursor - 1) % n) + 1, n) : t().uses(n)) + ' · ' + shown.page;
+  row.querySelector('.meta').title = n > 1 ? t().goTo + ' · ' + t().goToNext : t().goTo;
+  row.querySelector('input').checked = checked.has(it.hash);
+
+  const thumb = row.querySelector('.thumb');
+  thumb.classList.toggle('loading', !it.thumb);
+  if (it.thumb && !thumb.firstChild) {
+    const img = document.createElement('img');
+    img.src = it.thumb;
+    thumb.append(img);
+  }
+
+  const gain = row.querySelector('.gain');
+  const noGain = it.newBytes != null && it.newBytes >= it.bytes;
+  row.classList.toggle('no-gain', noGain);
+  gain.className = 'gain' + (noGain ? ' none' : it.newBytes == null ? ' est' : '');
+  gain.textContent = noGain ? t().noGain : (it.newBytes == null ? '~' : '') + '−' + size(gainOf(it));
+}
+
+function renderCounts() {
+  if (!items) return;
+  const total = items.reduce((s, i) => s + gainOf(i), 0);
+  $('counts').innerHTML = t().counts(items.length) + (items.length ? t().countsGain('~' + size(total)) : '');
+  if (!items.length) return;
+  const sel = items.filter((i) => checked.has(i.hash));
+  $('selInfo').textContent = t().selInfo(sel.length, size(sel.reduce((s, i) => s + gainOf(i), 0)));
+  $('apply').textContent = busy === 'apply' ? t().applying : t().apply(sel.length);
+  $('apply').disabled = !!busy || !sel.length;
+  $('toggle').textContent = sel.length === items.length ? t().selectNone : t().selectAll;
+}
+
+// Each click selects the next use of the same image.
+function goTo(it) {
+  const node = it.nodes[(it.cursor || 0) % it.nodes.length];
+  it.cursor = (it.cursor || 0) + 1;
+  send({ type: 'focus', id: node.id });
+  renderRow(it);
+}
+
+// ---------- Language ----------
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t()[el.dataset.i18n]; });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t()[el.dataset.i18nTitle]; });
+  document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('on', b.dataset.lang === lang));
+  $('sVer').textContent = t().version + ' ' + VERSION;
+  renderControls();
+  renderResults();
+}
+
+// ---------- Events ----------
+
+document.querySelectorAll('#scope button').forEach((b) => {
+  b.onclick = () => { scope = b.dataset.v; renderControls(); };
+});
+document.querySelectorAll('#scale button').forEach((b) => {
+  b.onclick = () => { prefs.scale = Number(b.dataset.v); savePrefs(); renderControls(); };
+});
+document.querySelectorAll('#minSize button').forEach((b) => {
+  b.onclick = () => { prefs.minSize = Number(b.dataset.v); savePrefs(); renderControls(); };
+});
+
+function clearResults() {
+  if (items) items.forEach((i) => { if (i.thumb) URL.revokeObjectURL(i.thumb); });
+  items = null;
+  checked = new Set();
+  resized.clear();
+}
+
+$('scan').onclick = () => {
+  busy = 'scan';
+  result = null;
+  clearResults();
+  $('status').textContent = '';
+  renderControls();
+  renderResults();
+  send({ type: 'scan', scope, scale: prefs.scale, minBytes: prefs.minSize });
+};
+
+$('toggle').onclick = () => {
+  const all = items.every((i) => checked.has(i.hash));
+  checked = new Set(all ? [] : items.map((i) => i.hash));
+  items.forEach(renderRow);
+  renderCounts();
+};
+
+$('apply').onclick = () => {
+  const hashes = items.filter((i) => checked.has(i.hash)).map((i) => i.hash);
+  if (!hashes.length) return;
+  busy = 'apply';
+  renderControls();
+  renderCounts();
+  send({ type: 'apply', hashes });
+};
+
+$('openSettings').onclick = () => document.body.classList.add('settings-open');
+$('closeSettings').onclick = () => document.body.classList.remove('settings-open');
+document.querySelectorAll('[data-lang]').forEach((b) => {
+  b.onclick = () => { lang = b.dataset.lang; send({ type: 'setLang', lang }); applyLang(); };
+});
+
+// ---------- Pixel work ----------
+
+// Step down by halves for better quality on large reductions.
+function downscale(bitmap, tw, th) {
+  let src = bitmap, w = bitmap.width, h = bitmap.height;
+  while (w / 2 >= tw && h / 2 >= th) {
+    const c = new OffscreenCanvas(Math.round(w / 2), Math.round(h / 2));
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    src = c; w = c.width; h = c.height;
+  }
+  const out = new OffscreenCanvas(tw, th);
+  const ctx = out.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, tw, th);
+  return out;
+}
+
+// Keeps the original format. JPEGs have to be re-encoded after resizing; a high quality keeps that invisible.
+async function encode(bitmap, targetW, targetH, format) {
+  const canvas = downscale(bitmap, targetW, targetH);
+  const blob = format === 'JPEG'
+    ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.92 })
+    : await canvas.convertToBlob({ type: 'image/png' });
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+async function thumbnail(bitmap) {
+  const s = Math.min(1, 96 / Math.max(bitmap.width, bitmap.height));
+  const c = downscale(bitmap, Math.max(1, Math.round(bitmap.width * s)), Math.max(1, Math.round(bitmap.height * s)));
+  return URL.createObjectURL(await c.convertToBlob({ type: 'image/png' }));
+}
+
+const key = (m) => m.hash + '@' + m.targetW + 'x' + m.targetH;
+
+// Draws the thumbnail and measures the real size after resizing (kept for when the user applies).
+async function preview(m) {
+  let newBytes = null, thumb = null;
+  try {
+    const bmp = await createImageBitmap(new Blob([m.bytes]));
+    thumb = await thumbnail(bmp);
+    const out = await encode(bmp, m.targetW, m.targetH, m.format);
+    resized.set(key(m), out);
+    newBytes = out.length;
+  } catch (e) {}
+  send({ type: 'previewed', hash: m.hash });
+  const it = items && items.find((i) => i.hash === m.hash);
+  if (!it) { if (thumb) URL.revokeObjectURL(thumb); return; }
+  it.thumb = thumb;
+  it.newBytes = newBytes;
+  if (newBytes != null && newBytes >= it.bytes) checked.delete(it.hash);
+  renderRow(it);
+  renderCounts();
+}
+
+async function resize(m) {
+  try {
+    let out = resized.get(key(m));
+    if (!out) out = await encode(await createImageBitmap(new Blob([m.bytes])), m.targetW, m.targetH, m.format);
+    send({ type: 'resized', hash: m.hash, bytes: out });
+  } catch (e) {
+    send({ type: 'resized', hash: m.hash, bytes: null });
+  }
+}
+
+// ---------- Messages ----------
+
+onmessage = (e) => {
+  const m = e.data.pluginMessage;
+  if (!m) return;
+  if (m.type === 'prefs') {
+    lang = m.lang === 'tr' ? 'tr' : 'en';
+    const p = m.prefs || {};
+    if ([2, 3, 4].indexOf(p.scale) !== -1) prefs.scale = p.scale;
+    if ([102400, 512000, 1048576].indexOf(p.minSize) !== -1) prefs.minSize = p.minSize;
+    applyLang();
+    document.body.classList.remove('loading');
+  } else if (m.type === 'selection') {
+    onSelection(m);
+  } else if (m.type === 'progress') {
+    $('status').textContent = m.phase === 'scan' ? t().scanProgress(m.n, m.total) : t().applyProgress(m.n, m.total);
+  } else if (m.type === 'preview') {
+    preview(m);
+  } else if (m.type === 'resize') {
+    resize(m);
+  } else if (m.type === 'scan-result') {
+    busy = null;
+    items = m.items.map((i) => Object.assign(i, { newBytes: null, thumb: null, cursor: 0 }));
+    checked = new Set(items.map((i) => i.hash));
+    $('status').textContent = '';
+    renderControls();
+    renderResults();
+  } else if (m.type === 'apply-result') {
+    busy = null;
+    result = m;
+    clearResults();
+    $('status').textContent = '';
+    renderControls();
+    renderResults();
+  } else if (m.type === 'error') {
+    busy = null;
+    result = { error: m.text };
+    $('status').textContent = '';
+    renderControls();
+    renderResults();
+  }
+};
+
+document.querySelector('.logo').src = 'data:image/png;base64,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';
+$('ver').textContent = 'v' + VERSION;
+applyLang();
+send({ type: 'ready' });
+setTimeout(() => document.body.classList.remove('loading'), 1000); // fallback if prefs never arrive
+</script>
+</body>
+</html>
