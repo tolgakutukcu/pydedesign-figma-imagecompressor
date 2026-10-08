@@ -4,8 +4,11 @@ A Figma plugin that shrinks oversized images to the pixel size they are actually
 
 ## Install
 
-1. In Figma: Plugins → Development → Import plugin from manifest… → select `manifest.json`.
-2. The plugin shows up under Plugins → Development → Pyde Image Optimizer.
+1. Download this repo (Code → Download ZIP) and unzip it.
+2. In Figma: Plugins → Development → Import plugin from manifest… → select `manifest.json`.
+3. The plugin shows up under Plugins → Development → Pyde Image Optimizer.
+
+On start the plugin checks GitHub for a newer version, so it needs an internet connection to open. When a new version is out it asks you to download it and import the new `manifest.json`.
 
 ## Use
 
@@ -26,7 +29,7 @@ The interface can be switched between English and Turkish in Settings.
 - The format is kept. PNGs stay lossless. A resized JPEG has to be saved again as JPEG; it is saved at high quality (92) so the difference isn't visible.
 - If the resized image isn't smaller than the original, it is marked "No saving" and left alone.
 - GIFs are skipped so their animation isn't lost.
-- No network access; everything runs on your computer.
+- Images never leave your computer. The only network request is the version check against this repo's `version.json`.
 
 ## Limits
 
